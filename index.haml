@@ -1,0 +1,11 @@
+%input{:type => "checkbox", :id => "btn"}
+%label{:for => "btn", :class => "btn"}
+  %span.unchecked Play!
+  %span.checked Pause!
+
+.surface
+  .compressor
+    -(1..16).each do |i|
+      .row
+        -(1..16).each do |j|
+          .point

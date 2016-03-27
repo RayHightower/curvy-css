@@ -1,0 +1,195 @@
+// these two have to match the number of elements in the DOM
+$nx: 16; // number of elements along x axis
+$ny: 16; // number of elements along y axis
+
+$nux: 4; // number of units along the x axis
+$nuy: 4; // number of units along the y axis
+
+$d: .25em; // dot diam
+$u: 5em; // unit size
+$p: 5.6; // max height param
+$t: 16s; // rotation animation duration
+$of: .75; // opacity factor
+
+$dpux: floor($nx/$nux); // density of dots per unit along x axis
+$dpuy: floor($ny/$nuy); // density of dots per unit along y axis
+
+$minx: -1*floor($nux/2); // minimum value along x axis
+$miny: -1*floor($nuy/2); // minimum value along y axis
+
+@function asin($val, $e: pi()/7200) {
+  /*
+   * $val: the value for which we compute the arc sine;
+   * $e: tolerated error; lower = better precision
+   * 
+   * the function returns the arc sine of $val
+   * 
+   * Examples: 
+   * asin(.5) returns 29.97584deg (using default tolerated error)
+   * asin(0, pi()/180) returns 0deg
+   */
+  
+  $sum: 0; // the "infinite" sum we compute
+  $sign: 1; // sign of angle
+  $flag: 0; // 0 if angle in absolute value < 45deg, 1 otherwise
+  $i: 0; // current index
+  $c: 1;
+  $j: 2*$i + 1;
+  
+  @if abs($val) > sin(45deg) {
+    $flag: 1;
+    $sign: $val/abs($val);
+    $val: sqrt(1 - pow($val, 2));
+  }
+  
+  $term: $c*pow($val, $j)/$j;
+  
+  @while abs($term) > $e {
+    $sum: $sum + $term;
+    
+    $i: $i + 1;
+    $c: $c*(2*$i - 1)/(2*$i);
+    $j: 2*$i + 1;
+    
+    $term: $c*pow($val, $j)/$j;
+  }
+  
+  $result: $sign*($flag*pi()/2 + pow(-1, $flag)*$sum);
+  
+  @return $result/pi()*180deg;
+}
+
+@function atan($val, $e: pi()/7200) {
+  /*
+   * $val: the value for which we compute the arc tangent
+   * $e: tolerated error; lower = better precision
+   * 
+   * the function returns the arc tangent of $val
+   * 
+   * Examples: 
+   * atan(1) returns ~45deg (using default tolerated error)
+   * atan(0, pi()/180) returns 0deg
+   */
+  
+  $val: $val/sqrt(1 + pow($val, 2));
+  
+  @return asin($val, $e);
+}
+html, body { height: 100%; }
+
+body {
+  overflow: hidden;
+  margin: 0;
+  perspective-origin: 50% 0;
+  perspective: 32em;
+  background: black;
+}
+
+.surface, .surface *, .surface :before, .surface :after {
+  position: absolute;
+  top: 50%; right: 50%;
+  transform-style: preserve-3d;
+}
+
+.row {
+  @for $i from 0 to $nx {
+    &:nth-child(#{$i + 1}) {
+      $x: $minx + $i/$dpux;
+      transform: translateZ($x*$u);
+      @for $j from 0 to $ny {
+        .point:nth-child(#{$j + 1}) {
+          $y: $miny + $j/$dpuy;
+          $z: $p*$x*pow(e(), -1*(pow($x, 2) + pow($y, 2)));
+          transform: translate($y*$u, $z*$u);
+          &:before, &:after {
+            background: hsl($z*360/$p, 100%, 50%);
+          }
+          &:before {
+            @if $i > 0 {
+              $x0: $minx + ($i - 1)/$dpux;
+              $z0: $p*$x0*pow(e(), -1*(pow($x0, 2) + pow($y, 2)));
+              $alpha: atan($dpux*($z - $z0));
+              transform: rotateY(-90deg) 
+                         skewY($alpha) rotateX(90deg);
+              background: linear-gradient(90deg, 
+                  hsl($z0*360/$p, 100%, 50%), 
+                  hsl($z*360/$p, 100%, 50%));
+            }
+            @else { display: none; }
+          }
+          &:after {
+            @if $j >0 {
+              $y0: $miny + ($j - 1)/$dpuy;
+              $z0: $p*$x*pow(e(), -1*(pow($x, 2) + pow($y0, 2)));
+              $alpha: atan($dpuy*($z - $z0));
+              transform: skewY($alpha) rotateX(90deg);
+              background: linear-gradient(90deg, 
+                  hsl($z0*360/$p, 100%, 50%), 
+                  hsl($z*360/$p, 100%, 50%));
+            }
+            @else {
+              display: none;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.point {
+  &:before, &:after {
+    margin: -$d/2 0;
+    height: $d;
+    transform-origin: 100% 50%;
+    opacity: $of;
+    content: '';
+  }
+  &:before { width: $u/$dpux; }
+  &:after { width: $u/$dpuy; }
+}
+
+@keyframes rot { to { transform: rotateY(360deg); } }
+
+@keyframes compress { to { transform: scaleY(-1); } }
+
+/* "play animation" button styles */
+input[type=checkbox] { display: none }
+.btn {
+  overflow: hidden;
+  position: absolute;
+  z-index: 10;
+  top: 1em; left: 50%;
+  border-radius: .5em;
+  box-shadow: 0 1px 0 black, 0 -1px 0 #96d1f8;
+  margin: 0 -3.25em;
+  opacity: .45;
+  background: #65a9d7 linear-gradient(#3e779d, #65a9d7);
+  color: white;
+  font: 700 italic 1em/2.6 Georgia, serif;
+  text-shadow: 0 1px 0 black;
+  cursor: pointer;
+  transition: .7s;
+  &:hover { opacity: 1; }
+}
+.btn, .btn span { width: 6.5em; height: 2.6em; }
+.btn span {
+  position: absolute;
+  text-align: center;
+  transition: .5s;
+}
+.unchecked { top: 0; }
+.checked { top: 100%; }
+input[type=checkbox]:checked ~ .btn .unchecked { top: -100%; }
+input[type=checkbox]:checked ~ .btn .checked { top: 0; }
+
+
+/* in case anyone is wondering why I haven't used 
+ * `animation-play-state`: Chrome Canary on Win 7 fucks up */
+input[type=checkbox]:checked ~ .surface {
+  animation: rot $t linear infinite;
+}
+input[type=checkbox]:checked ~ .surface .compressor {
+  animation: compress $t*random(100)/100 ease-in-out 
+             infinite alternate;
+}
